@@ -1,78 +1,21 @@
-PolyForm Noncommercial License 1.0.0
+MIT License
 
-Copyright (c) 2024-present LLM Forge Contributors
+Copyright (c) 2024-present Thrilok (thriloke96@gmail.com)
 
-Permission is hereby granted, free of charge, to any person obtaining a
-copy of this software and associated documentation files (the "Software"),
-to use, copy, modify, and distribute the Software, subject to the following
-conditions:
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
 
-1. NONCOMMERCIAL USE ONLY
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
 
-   You may NOT use the Software for any Commercial Purpose.
-
-   "Commercial Purpose" means any use of the Software that is primarily
-   intended for or directed toward commercial advantage or monetary
-   compensation. This includes, but is not limited to:
-
-   (a) Using the Software in any product or service that is sold, licensed,
-       or offered for a fee
-   (b) Using the Software to provide paid consulting, hosting, or managed
-       services
-   (c) Using the Software internally within a for-profit organization for
-       revenue-generating activities
-   (d) Offering the Software as part of a SaaS, PaaS, or any hosted
-       commercial service
-   (e) Bundling or distributing the Software with any commercial product
-
-2. PERMITTED USES
-
-   You MAY use, modify, and distribute the Software freely for:
-
-   (a) Personal use
-   (b) Educational and academic research
-   (c) Non-profit organizational use
-   (d) Evaluation and testing (including by companies evaluating whether
-       to seek a commercial license)
-   (e) Contributing back to this project
-
-3. ATTRIBUTION
-
-   You must retain this copyright notice and license in all copies or
-   substantial portions of the Software.
-
-4. MODIFICATIONS
-
-   You may modify the Software and distribute your modifications, provided
-   that:
-   (a) Your modifications carry a prominent notice stating that you changed
-       the Software
-   (b) Your modifications are distributed under this same license
-   (c) Your modifications are not used for any Commercial Purpose
-
-5. NO COMMERCIAL LICENSING
-
-   No commercial license is available at this time. If you are a company
-   or commercial entity interested in using this software, contact the
-   maintainers to discuss terms.
-
-   Contact: thriloke96@gmail.com
-
-6. NO WARRANTY
-
-   THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
-   OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
-   MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
-   IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
-   CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
-   TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
-   SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-7. TERMINATION
-
-   This license automatically terminates if you violate any of its terms.
-   Upon termination, you must destroy all copies of the Software in your
-   possession.
-
-Based on PolyForm Noncommercial License 1.0.0
-https://polyformproject.org/licenses/noncommercial/1.0.0
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

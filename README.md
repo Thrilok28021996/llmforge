@@ -283,11 +283,4 @@ All data stored in `~/.llmforge/`:
 
 ## License
 
-**PolyForm Noncommercial 1.0.0** — Source available, free for everyone except commercial use.
-
-- Personal use — free
-- Education & research — free
-- Non-profits — free
-- **Companies / commercial use — not permitted**
-
-See [LICENSE](LICENSE) for full terms.
+MIT — free for everyone, do whatever you want, just keep the copyright notice. See [LICENSE](LICENSE).

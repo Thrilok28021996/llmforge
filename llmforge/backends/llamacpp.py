@@ -58,12 +58,66 @@ class LlamaCppBackend:
             self._model = None
 
         logger.info("Loading GGUF model: %s", model_path)
-        self._model = Llama(
-            model_path=model_path,
-            n_ctx=self._config.context_length,
-            n_gpu_layers=self._config.n_gpu_layers,
-            verbose=False,
-        )
+        load_kwargs: dict = {
+            "model_path": model_path,
+            "n_ctx": self._config.context_length,
+            "n_gpu_layers": self._config.n_gpu_layers,
+            "verbose": False,
+            "use_mmap": self._config.use_mmap,
+            "use_mlock": self._config.use_mlock,
+            "flash_attn": self._config.flash_attention,
+            "n_batch": self._config.eval_batch_size,
+            "type_k": 1 if self._config.use_fp16_kv else 0,  # 1=f16, 0=f32
+            "type_v": 1 if self._config.use_fp16_kv else 0,
+        }
+        if self._config.rope_freq_base > 0:
+            load_kwargs["rope_freq_base"] = self._config.rope_freq_base
+        if self._config.rope_freq_scale > 0:
+            load_kwargs["rope_freq_scale"] = self._config.rope_freq_scale
+        if self._config.num_experts is not None:
+            load_kwargs["n_experts"] = self._config.num_experts
+        if self._config.cpu_threads > 0:
+            load_kwargs["n_threads"] = self._config.cpu_threads
+
+        # Speculative decoding
+        if self._config.speculative == "prompt-lookup":
+            try:
+                from llama_cpp.llama_speculative import LlamaPromptLookupDecoding
+                load_kwargs["draft_model"] = LlamaPromptLookupDecoding(
+                    num_pred_tokens=self._config.speculative_num_tokens,
+                )
+                logger.info(
+                    "Speculative decoding: prompt-lookup (%d tokens)",
+                    self._config.speculative_num_tokens,
+                )
+            except ImportError:
+                logger.warning(
+                    "Prompt lookup decoding not available — "
+                    "upgrade llama-cpp-python to >=0.2.38"
+                )
+        elif self._config.speculative == "draft-model":
+            draft_path = self._config.speculative_draft_model
+            if draft_path and Path(draft_path).expanduser().exists():
+                try:
+                    from llama_cpp.llama_speculative import LlamaPromptLookupDecoding  # noqa: F811
+
+                    # Load draft model as a separate Llama instance
+                    draft = Llama(
+                        model_path=str(Path(draft_path).expanduser()),
+                        n_ctx=self._config.context_length,
+                        n_gpu_layers=self._config.n_gpu_layers,
+                        verbose=False,
+                    )
+                    load_kwargs["draft_model"] = draft
+                    logger.info("Speculative decoding: draft model %s", draft_path)
+                except Exception as e:
+                    logger.warning("Failed to load draft model: %s", e)
+            else:
+                logger.warning(
+                    "Draft model path not found: %s", draft_path
+                )
+
+        self._model = Llama(**load_kwargs)
         self._model_path = model_path
         logger.info("Model loaded: %s", model_path)
 
@@ -120,16 +174,25 @@ class LlamaCppBackend:
         try:
             # Use create_chat_completion with streaming
             def _stream():
-                return self._model.create_chat_completion(
-                    messages=messages,
-                    stream=True,
-                    temperature=request.params.temperature,
-                    top_p=request.params.top_p,
-                    top_k=request.params.top_k,
-                    max_tokens=request.params.max_tokens,
-                    repeat_penalty=request.params.repeat_penalty,
-                    seed=request.params.seed or -1,
-                )
+                gen_kwargs: dict = {
+                    "messages": messages,
+                    "stream": True,
+                    "temperature": request.params.temperature,
+                    "top_p": request.params.top_p,
+                    "top_k": request.params.top_k,
+                    "max_tokens": request.params.max_tokens,
+                    "repeat_penalty": request.params.repeat_penalty,
+                    "seed": request.params.seed or -1,
+                }
+                if request.params.min_p > 0:
+                    gen_kwargs["min_p"] = request.params.min_p
+                if request.params.frequency_penalty != 0:
+                    gen_kwargs["frequency_penalty"] = request.params.frequency_penalty
+                if request.params.presence_penalty != 0:
+                    gen_kwargs["presence_penalty"] = request.params.presence_penalty
+                if request.params.stop_strings:
+                    gen_kwargs["stop"] = request.params.stop_strings
+                return self._model.create_chat_completion(**gen_kwargs)
 
             stream = await loop.run_in_executor(None, _stream)
 

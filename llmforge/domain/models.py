@@ -95,9 +95,24 @@ class GenerationParams:
     context_length: int = 4096
     repeat_penalty: float = 1.1
     seed: int | None = None
+    # --- New params (provider-dependent) ---
+    min_p: float = 0.0  # ollama, llamacpp
+    frequency_penalty: float = 0.0  # openai-compat, openrouter, google
+    presence_penalty: float = 0.0  # openai-compat, openrouter, google
+    stop_strings: list[str] | None = None  # all backends
+    # llamacpp-specific (also exposed via ollama for some)
+    flash_attention: bool = False  # llamacpp
+    eval_batch_size: int = 512  # llamacpp
+    rope_freq_base: float = 0.0  # llamacpp (0 = auto)
+    rope_freq_scale: float = 0.0  # llamacpp (0 = auto)
+    use_mmap: bool = True  # llamacpp
+    use_mlock: bool = False  # llamacpp
+    use_fp16_kv: bool = True  # llamacpp
+    num_experts: int | None = None  # llamacpp (MoE models)
+    cpu_threads: int = 0  # llamacpp (0 = auto)
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "temperature": self.temperature,
             "top_p": self.top_p,
             "top_k": self.top_k,
@@ -105,7 +120,13 @@ class GenerationParams:
             "context_length": self.context_length,
             "repeat_penalty": self.repeat_penalty,
             "seed": self.seed,
+            "min_p": self.min_p,
+            "frequency_penalty": self.frequency_penalty,
+            "presence_penalty": self.presence_penalty,
         }
+        if self.stop_strings:
+            d["stop_strings"] = self.stop_strings
+        return d
 
 
 @dataclass

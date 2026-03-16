@@ -96,6 +96,19 @@ class LlamaCppConfig(BaseModel):
     model_dirs: list[str] = Field(default_factory=list)
     n_gpu_layers: int = -1  # -1 = all layers on GPU
     context_length: int = 4096
+    flash_attention: bool = False
+    eval_batch_size: int = 512
+    rope_freq_base: float = 0.0  # 0 = auto
+    rope_freq_scale: float = 0.0  # 0 = auto
+    use_mmap: bool = True
+    use_mlock: bool = False
+    use_fp16_kv: bool = True
+    num_experts: int | None = None  # MoE models only
+    cpu_threads: int = 0  # 0 = auto
+    # Speculative decoding
+    speculative: str = "off"  # "off" | "prompt-lookup" | "draft-model"
+    speculative_num_tokens: int = 10  # tokens to predict ahead (10=gpu, 2=cpu)
+    speculative_draft_model: str = ""  # path to smaller GGUF for draft-model mode
 
 
 class ProfilerConfig(BaseModel):
@@ -116,6 +129,10 @@ class GenerationDefaults(BaseModel):
     context_length: int = 4096
     repeat_penalty: float = 1.1
     seed: int | None = None
+    min_p: float = 0.0
+    frequency_penalty: float = 0.0
+    presence_penalty: float = 0.0
+    stop_strings: list[str] = Field(default_factory=list)
 
 
 class Config(BaseModel):

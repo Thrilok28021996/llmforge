@@ -6,12 +6,12 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from textual import on, work
+from textual import work
 from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import Screen
-from textual.widgets import Footer, Header, Input, Markdown, Static
+from textual.widgets import Footer, Header, Markdown, Static, TextArea
 
 from llmforge.domain.models import (
     ChatMessage,
@@ -31,6 +31,67 @@ if TYPE_CHECKING:
     from llmforge.backends.ollama import OllamaBackend
     from llmforge.domain.hardware import HardwareMonitor
     from llmforge.storage.db import Database
+
+
+class CopyCodeButton(Static):
+    """A small clickable [Copy] button for code blocks."""
+
+    DEFAULT_CSS = """
+    CopyCodeButton {
+        dock: right;
+        width: 8;
+        height: 1;
+        margin: 0 1;
+        color: $text-muted;
+        text-style: bold;
+        content-align: right middle;
+    }
+    CopyCodeButton:hover {
+        color: $accent;
+    }
+    """
+
+    def __init__(self, code: str):
+        super().__init__("[Copy]")
+        self._code = code
+
+    async def on_click(self) -> None:
+        import platform
+        import subprocess
+
+        copied = False
+        # macOS: use pbcopy (always available, no deps)
+        if platform.system() == "Darwin":
+            try:
+                subprocess.run(
+                    ["pbcopy"], input=self._code.encode(), check=True
+                )
+                copied = True
+            except Exception:
+                pass
+        # Linux: try xclip or xsel
+        if not copied:
+            for cmd in (["xclip", "-selection", "clipboard"], ["xsel", "--clipboard"]):
+                try:
+                    subprocess.run(cmd, input=self._code.encode(), check=True)
+                    copied = True
+                    break
+                except Exception:
+                    continue
+        # Fallback: pyperclip
+        if not copied:
+            try:
+                import pyperclip
+                pyperclip.copy(self._code)
+                copied = True
+            except Exception:
+                pass
+
+        if copied:
+            self.update("[dim]Copied![/]")
+            self.set_timer(1.5, lambda: self.update("[Copy]"))
+        else:
+            self.screen.notify("Copy failed — no clipboard tool found", severity="warning")
 
 
 class MessageWidget(Static):
@@ -91,6 +152,16 @@ class MessageWidget(Static):
         else:
             yield Static(self.content, classes="msg-text")
 
+    def add_copy_buttons(self) -> None:
+        """Parse final content and add [Copy] buttons for each code block."""
+        import re
+
+        blocks = re.findall(r"```(?:\w*)\n(.*?)```", self.content, re.DOTALL)
+        for i, code in enumerate(blocks):
+            btn = CopyCodeButton(code.strip())
+            btn.id = f"copy-btn-{id(self)}-{i}"
+            self.mount(btn)
+
 
 class ChatScreen(Screen):
     """Main chat interface with live profiler panel."""
@@ -142,12 +213,17 @@ class ChatScreen(Screen):
     }
     #input-box {
         dock: bottom;
-        height: 3;
+        height: auto;
+        max-height: 12;
         border-top: thick $primary-background-darken-2;
         padding: 0 1;
     }
     #chat-input {
         width: 100%;
+        height: 3;
+        min-height: 3;
+        max-height: 10;
+        border: tall $primary-background-lighten-1;
     }
     #status-line {
         dock: bottom;
@@ -241,6 +317,7 @@ class ChatScreen(Screen):
                             yield Static("")
                             yield Static(
                                 "[cyan]Enter[/] [dim]Send[/]  "
+                                "[cyan]Shift+Enter[/] [dim]Newline[/]  "
                                 "[cyan]Ctrl+E[/] [dim]Export[/]  "
                                 "[cyan]Ctrl+M[/] [dim]Switch model[/]"
                             )
@@ -254,9 +331,13 @@ class ChatScreen(Screen):
                     id="status-line",
                 )
                 with Vertical(id="input-box"):
-                    yield Input(
-                        placeholder="Type your message... (Enter to send)",
+                    yield TextArea(
+                        "",
                         id="chat-input",
+                        language=None,
+                        soft_wrap=True,
+                        show_line_numbers=False,
+                        tab_behavior="indent",
                     )
 
             with Vertical(id="profiler-col"):
@@ -268,7 +349,7 @@ class ChatScreen(Screen):
         yield Footer()
 
     def on_mount(self) -> None:
-        self.query_one("#chat-input", Input).focus()
+        self.query_one("#chat-input", TextArea).focus()
         self._start_hw_polling()
         self._init_mcp()
         # If resuming a session, restore messages
@@ -331,13 +412,34 @@ class ChatScreen(Screen):
 
         return re.sub(r"@([/\w.~\-]+\.\w+)", replace_ref, text)
 
-    @on(Input.Submitted, "#chat-input")
-    async def on_submit(self, event: Input.Submitted) -> None:
-        text = event.value.strip()
+    async def on_key(self, event) -> None:
+        """Intercept Enter on chat input: Enter=send, Shift+Enter=newline."""
+        ta = self.query_one("#chat-input", TextArea)
+        if not ta.has_focus:
+            return
+        # Textual encodes modifiers in the key name: "enter" vs "shift+enter"
+        if event.key == "enter":
+            event.prevent_default()
+            event.stop()
+            await self._submit_message()
+
+    def on_text_area_changed(self, event: TextArea.Changed) -> None:
+        """Auto-resize the TextArea height based on content line count."""
+        if event.text_area.id != "chat-input":
+            return
+        lines = event.text_area.document.line_count
+        # Clamp between 3 and 10 lines
+        new_h = max(3, min(10, lines + 1))
+        event.text_area.styles.height = new_h
+
+    async def _submit_message(self) -> None:
+        """Submit the current TextArea content as a message (Enter key)."""
+        ta = self.query_one("#chat-input", TextArea)
+        text = ta.text.strip()
         if not text or self._streaming:
             return
 
-        event.input.value = ""
+        ta.clear()
 
         # Expand @file references before sending
         text = self._expand_file_refs(text)
@@ -503,6 +605,11 @@ class ChatScreen(Screen):
         # Join final response text
         self._current_response = "".join(self._response_chunks)
 
+        # Add copy buttons for code blocks (LM Studio-style)
+        if self._current_msg_widget and "```" in self._current_response:
+            self._current_msg_widget.content = self._current_response
+            self._current_msg_widget.add_copy_buttons()
+
         # Guard: if a newer generation started, don't modify shared state
         if gen_id != self._generation_id:
             return
@@ -611,7 +718,7 @@ class ChatScreen(Screen):
         self._update_status(streaming=False)
 
     def action_clear_input(self) -> None:
-        self.query_one("#chat-input", Input).value = ""
+        self.query_one("#chat-input", TextArea).clear()
 
     async def action_cancel(self) -> None:
         if self._streaming:
@@ -742,9 +849,10 @@ class ChatScreen(Screen):
         def on_template(result):
             if result and isinstance(result, dict):
                 content = result.get("content", "")
-                inp = self.query_one("#chat-input", Input)
-                inp.value = content
-                inp.focus()
+                ta = self.query_one("#chat-input", TextArea)
+                ta.clear()
+                ta.insert(content)
+                ta.focus()
 
         await self.app.push_screen(PromptTemplateScreen(self.db), on_template)
 

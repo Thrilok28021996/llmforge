@@ -71,14 +71,24 @@ class GoogleBackend:
         if request.system_prompt:
             system_instruction = {"parts": [{"text": request.system_prompt}]}
 
+        gen_config: dict = {
+            "temperature": request.params.temperature,
+            "topP": request.params.top_p,
+            "topK": request.params.top_k,
+            "maxOutputTokens": request.params.max_tokens,
+        }
+        if request.params.frequency_penalty != 0:
+            gen_config["frequencyPenalty"] = request.params.frequency_penalty
+        if request.params.presence_penalty != 0:
+            gen_config["presencePenalty"] = request.params.presence_penalty
+        if request.params.stop_strings:
+            gen_config["stopSequences"] = request.params.stop_strings
+        if request.params.seed is not None:
+            gen_config["seed"] = request.params.seed
+
         body: dict = {
             "contents": contents,
-            "generationConfig": {
-                "temperature": request.params.temperature,
-                "topP": request.params.top_p,
-                "topK": request.params.top_k,
-                "maxOutputTokens": request.params.max_tokens,
-            },
+            "generationConfig": gen_config,
         }
         if system_instruction:
             body["systemInstruction"] = system_instruction

@@ -58,21 +58,31 @@ class OllamaBackend:
         for msg in request.messages:
             messages.append({"role": msg.role, "content": msg.content})
 
-        body = {
+        options: dict = {
+            "temperature": request.params.temperature,
+            "top_p": request.params.top_p,
+            "top_k": request.params.top_k,
+            "num_predict": request.params.max_tokens,
+            "num_ctx": request.params.context_length,
+            "repeat_penalty": request.params.repeat_penalty,
+        }
+        if request.params.seed is not None:
+            options["seed"] = request.params.seed
+        if request.params.min_p > 0:
+            options["min_p"] = request.params.min_p
+        if request.params.frequency_penalty != 0:
+            options["frequency_penalty"] = request.params.frequency_penalty
+        if request.params.presence_penalty != 0:
+            options["presence_penalty"] = request.params.presence_penalty
+
+        body: dict = {
             "model": request.model_id,
             "messages": messages,
             "stream": True,
-            "options": {
-                "temperature": request.params.temperature,
-                "top_p": request.params.top_p,
-                "top_k": request.params.top_k,
-                "num_predict": request.params.max_tokens,
-                "num_ctx": request.params.context_length,
-                "repeat_penalty": request.params.repeat_penalty,
-            },
+            "options": options,
         }
-        if request.params.seed is not None:
-            body["options"]["seed"] = request.params.seed
+        if request.params.stop_strings:
+            body["stop"] = request.params.stop_strings
 
         try:
             async with self._client.stream(

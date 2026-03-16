@@ -85,6 +85,8 @@ class AnthropicBackend:
             body["system"] = system_text
         if request.params.top_k > 0:
             body["top_k"] = request.params.top_k
+        if request.params.stop_strings:
+            body["stop_sequences"] = request.params.stop_strings
 
         # Include tools if present
         if hasattr(request, "tools") and request.tools:

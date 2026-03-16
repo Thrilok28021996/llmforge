@@ -201,9 +201,12 @@ class ParameterPanel(Widget):
         yield ParamInput("Temperature", "temp", 0.0, 2.0, 0.05, p.temperature)
         yield ParamInput("Top P", "top_p", 0.0, 1.0, 0.05, p.top_p)
         yield ParamInput("Top K", "top_k", 1, 100, 1, p.top_k)
+        yield ParamInput("Min P", "min_p", 0.0, 1.0, 0.01, p.min_p)
         yield ParamInput("Max Tokens", "max_tokens", 64, 32768, 64, p.max_tokens)
         yield ParamInput("Context Length", "ctx_len", 512, 131072, 512, p.context_length)
         yield ParamInput("Repeat Penalty", "repeat", 1.0, 2.0, 0.05, p.repeat_penalty)
+        yield ParamInput("Freq Penalty", "freq_pen", 0.0, 2.0, 0.05, p.frequency_penalty)
+        yield ParamInput("Presence Penalty", "pres_pen", 0.0, 2.0, 0.05, p.presence_penalty)
 
         with Vertical(classes="seed-row"):
             yield Static("  [dim]Seed (blank = random):[/]")
@@ -211,6 +214,14 @@ class ParameterPanel(Widget):
                 value=str(p.seed) if p.seed is not None else "",
                 placeholder="random",
                 id="seed-input",
+            )
+
+        with Vertical(classes="seed-row"):
+            yield Static("  [dim]Stop strings (comma-sep):[/]")
+            yield Input(
+                value=",".join(p.stop_strings) if p.stop_strings else "",
+                placeholder="e.g. </s>,###",
+                id="stop-input",
             )
 
         # Preset keys
@@ -238,14 +249,26 @@ class ParameterPanel(Widget):
         except (ValueError, Exception):
             pass
 
+        stop_strings = None
+        try:
+            stop_text = self.query_one("#stop-input", Input).value.strip()
+            if stop_text:
+                stop_strings = [s.strip() for s in stop_text.split(",") if s.strip()]
+        except Exception:
+            pass
+
         return GenerationParams(
             temperature=inputs["temp"].value if "temp" in inputs else 0.7,
             top_p=inputs["top_p"].value if "top_p" in inputs else 0.9,
             top_k=int(inputs["top_k"].value) if "top_k" in inputs else 40,
+            min_p=inputs["min_p"].value if "min_p" in inputs else 0.0,
             max_tokens=int(inputs["max_tokens"].value) if "max_tokens" in inputs else 2048,
             context_length=int(inputs["ctx_len"].value) if "ctx_len" in inputs else 4096,
             repeat_penalty=inputs["repeat"].value if "repeat" in inputs else 1.1,
+            frequency_penalty=inputs["freq_pen"].value if "freq_pen" in inputs else 0.0,
+            presence_penalty=inputs["pres_pen"].value if "pres_pen" in inputs else 0.0,
             seed=seed_val,
+            stop_strings=stop_strings,
         )
 
     def set_params(self, params: GenerationParams) -> None:
@@ -255,9 +278,12 @@ class ParameterPanel(Widget):
             "temp": params.temperature,
             "top_p": params.top_p,
             "top_k": params.top_k,
+            "min_p": params.min_p,
             "max_tokens": params.max_tokens,
             "ctx_len": params.context_length,
             "repeat": params.repeat_penalty,
+            "freq_pen": params.frequency_penalty,
+            "pres_pen": params.presence_penalty,
         }
         for param_input in self.query(ParamInput):
             if param_input.param_id in mapping:
@@ -265,6 +291,12 @@ class ParameterPanel(Widget):
         try:
             self.query_one("#seed-input", Input).value = (
                 str(params.seed) if params.seed is not None else ""
+            )
+        except Exception:
+            pass
+        try:
+            self.query_one("#stop-input", Input).value = (
+                ",".join(params.stop_strings) if params.stop_strings else ""
             )
         except Exception:
             pass

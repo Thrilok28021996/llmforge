@@ -67,12 +67,18 @@ class OpenRouterBackend:
             "temperature": request.params.temperature,
             "top_p": request.params.top_p,
             "max_tokens": request.params.max_tokens,
-            "frequency_penalty": max(0, request.params.repeat_penalty - 1.0),
+            "frequency_penalty": request.params.frequency_penalty,
+            "presence_penalty": request.params.presence_penalty,
         }
+        # Fall back to repeat_penalty conversion if no explicit frequency_penalty
+        if request.params.frequency_penalty == 0 and request.params.repeat_penalty != 1.0:
+            body["frequency_penalty"] = max(0, request.params.repeat_penalty - 1.0)
         if request.params.top_k > 0:
             body["top_k"] = request.params.top_k
         if request.params.seed is not None:
             body["seed"] = request.params.seed
+        if request.params.stop_strings:
+            body["stop"] = request.params.stop_strings
         if request.tools:
             body["tools"] = request.tools
 
